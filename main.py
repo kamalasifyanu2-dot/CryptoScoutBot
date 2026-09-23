@@ -6,7 +6,8 @@ import requests
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from telegram import Bot
+from telegram import Bot, Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from google import genai
 
 # Configure logging
@@ -35,7 +36,6 @@ if GEMINI_API_KEY:
 def fetch_crypto_data():
     """Fetches trending and top coins from CoinGecko API."""
     try:
-        # Fetch top coins by market cap
         market_url = "https://api.coingecko.com/api/v3/coins/markets"
         params = {
             "vs_currency": "usd",
@@ -48,7 +48,6 @@ def fetch_crypto_data():
         res = requests.get(market_url, params=params, timeout=10)
         top_coins = res.json() if res.status_code == 200 else []
 
-        # Fetch trending search coins
         trending_url = "https://api.coingecko.com/api/v3/search/trending"
         trend_res = requests.get(trending_url, timeout=10)
         trending_data = trend_res.json() if trend_res.status_code == 200 else {}
@@ -71,7 +70,7 @@ def generate_ai_commentary(top_coins):
         ])
         
         prompt = f"""
-        You are CryptoScoutBot, a smart crypto market companion. 
+        You are Cryptoscout06_Bot, a smart crypto market companion. 
         Here is the current live market data for top assets:
         {coin_summary}
         
@@ -121,6 +120,35 @@ def create_crypto_chart(top_coins):
         logger.error(f"Error creating chart image: {e}")
         return None
 
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Sends the welcome image and description when user starts the bot."""
+    welcome_caption = (
+        "👋 **Welcome to Cryptoscout06_Bot!**\n\n"
+        "CryptoScoutBot is your smart crypto market companion for real-time market updates. "
+        "Get the latest crypto news, live prices, rising and dropping coins, market trends, "
+        "and buy or sell signals to help you stay informed and track opportunities faster[cite: 1]."
+    )
+    
+    # URL or local filename of your welcome image
+    # If the image is saved in your repository folder as 'welcome.jpg', use that path.
+    image_path = "c83d178f2c29a2c06a4a354e4e714058.jpg" # Make sure to match your file name
+    
+    try:
+        if os.path.exists(image_path):
+            with open(image_path, "rb") as photo_file:
+                await update.message.reply_photo(
+                    photo=photo_file,
+                    caption=welcome_caption,
+                    parse_mode="Markdown"
+                )
+        else:
+            await update.message.reply_text(
+                text=welcome_caption,
+                parse_mode="Markdown"
+            )
+    except Exception as e:
+        logger.error(f"Error sending start welcome message: {e}")
+
 async def post_market_update():
     """Fetches data, creates image, and broadcasts update to Telegram channel."""
     logger.info("Preparing scheduled crypto market update...")
@@ -131,7 +159,6 @@ async def post_market_update():
         return
 
     ai_text = generate_ai_commentary(top_coins)
-    
     trend_str = ", ".join(trending_coins) if trending_coins else "Bitcoin, Ethereum, Solana"
     
     message = (
@@ -164,8 +191,7 @@ async def post_market_update():
 
 async def scheduler_loop():
     """Runs the posting loop every 30 minutes."""
-    # Wait 10 seconds on startup before first post
-    await asyncio.sleep(10)
+    await asyncio.sleep(15)
     while True:
         try:
             await post_market_update()
@@ -175,6 +201,24 @@ async def scheduler_loop():
         # 30 minutes = 1800 seconds
         await asyncio.sleep(1800)
 
+async def main():
+    """Main application runner combining bot handler and background scheduler."""
+    application = ApplicationBuilder().token(TOKEN).build()
+    
+    # Register /start command handler
+    application.add_handler(CommandHandler("start", start_command))
+    
+    # Start the background channel posting loop
+    asyncio.create_task(scheduler_loop())
+    
+    logger.info("Cryptoscout06_Bot is up and running...")
+    await application.initialize()
+    await application.start()
+    await application.updater.start_polling()
+    
+    # Keep the application running
+    stop_signal = asyncio.Event()
+    await stop_signal.wait()
+
 if __name__ == "__main__":
-    logger.info("Starting Cryptoscout06_Bot Scheduler...")
-    asyncio.run(scheduler_loop())
+    asyncio.run(main())
