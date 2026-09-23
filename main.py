@@ -16,11 +16,12 @@ logger = logging.getLogger(__name__)
 
 # Environment Variables
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID")  # e.g., @your_channel_name
+# Defaults to your channel handle if environment variable isn't set manually
+CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "@CryptoScout685w")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-if not TOKEN or not CHANNEL_ID:
-    logger.error("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHANNEL_ID environment variables!")
+if not TOKEN:
+    logger.error("Missing TELEGRAM_BOT_TOKEN environment variable!")
     exit(1)
 
 bot = Bot(token=TOKEN)
@@ -121,15 +122,14 @@ def create_crypto_chart(top_coins):
         return None
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Sends the welcome image and description when user starts the bot."""
+    """Sends the welcome image and description safely without markdown parsing crashes."""
     welcome_caption = (
-        "👋 **Welcome to Cryptoscout06_Bot!**\n\n"
+        "👋 Welcome to Cryptoscout06_Bot!\n\n"
         "CryptoScoutBot is your smart crypto market companion for real-time market updates. "
         "Get the latest crypto news, live prices, rising and dropping coins, market trends, "
         "and buy or sell signals to help you stay informed and track opportunities faster."
     )
     
-    # Path matching your uploaded welcome image filename
     image_path = "c83d178f2c29a2c06a4a354e4e714058.jpg"
     
     try:
@@ -137,14 +137,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             with open(image_path, "rb") as photo_file:
                 await update.message.reply_photo(
                     photo=photo_file,
-                    caption=welcome_caption,
-                    parse_mode="Markdown"
+                    caption=welcome_caption
                 )
         else:
-            await update.message.reply_text(
-                text=welcome_caption,
-                parse_mode="Markdown"
-            )
+            await update.message.reply_text(text=welcome_caption)
     except Exception as e:
         logger.error(f"Error sending start welcome message: {e}")
 
@@ -161,10 +157,10 @@ async def post_market_update():
     trend_str = ", ".join(trending_coins) if trending_coins else "Bitcoin, Ethereum, Solana"
     
     message = (
-        "🚀 **Cryptoscout06_ | Live Market Update** 🚀\n\n"
+        "🚀 *Cryptoscout06_ | Live Market Update* 🚀\n\n"
         f"{ai_text}\n\n"
-        f"🔥 **Trending Searches:** {trend_str}\n\n"
-        "💡 *Disclaimer: Not financial advice. Always do your own research.*\n"
+        f"🔥 *Trending Searches:* {trend_str}\n\n"
+        "💡 _Disclaimer: Not financial advice. Always do your own research._\n"
         "🤖 _Powered by Cryptoscout06_Bot_"
     )
     
@@ -204,20 +200,14 @@ async def main():
     """Main application runner combining bot handler and background scheduler."""
     application = ApplicationBuilder().token(TOKEN).build()
     
-    # Register /start command handler
     application.add_handler(CommandHandler("start", start_command))
-    
-    # Start the background channel posting loop
     asyncio.create_task(scheduler_loop())
     
     logger.info("Cryptoscout06_Bot is up and running...")
     await application.initialize()
     await application.start()
-    
-    # drop_prevending_updates=True prevents conflict errors on boot
     await application.updater.start_polling(drop_pending_updates=True)
     
-    # Keep the application running
     stop_signal = asyncio.Event()
     await stop_signal.wait()
 
