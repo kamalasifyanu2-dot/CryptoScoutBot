@@ -126,12 +126,11 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "👋 **Welcome to Cryptoscout06_Bot!**\n\n"
         "CryptoScoutBot is your smart crypto market companion for real-time market updates. "
         "Get the latest crypto news, live prices, rising and dropping coins, market trends, "
-        "and buy or sell signals to help you stay informed and track opportunities faster[cite: 1]."
+        "and buy or sell signals to help you stay informed and track opportunities faster."
     )
     
-    # URL or local filename of your welcome image
-    # If the image is saved in your repository folder as 'welcome.jpg', use that path.
-    image_path = "c83d178f2c29a2c06a4a354e4e714058.jpg" # Make sure to match your file name
+    # Path matching your uploaded welcome image filename
+    image_path = "c83d178f2c29a2c06a4a354e4e714058.jpg"
     
     try:
         if os.path.exists(image_path):
@@ -214,7 +213,9 @@ async def main():
     logger.info("Cryptoscout06_Bot is up and running...")
     await application.initialize()
     await application.start()
-    await application.updater.start_polling()
+    
+    # drop_prevending_updates=True prevents conflict errors on boot
+    await application.updater.start_polling(drop_pending_updates=True)
     
     # Keep the application running
     stop_signal = asyncio.Event()
