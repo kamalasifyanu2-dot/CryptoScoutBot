@@ -1,0 +1,4 @@
+python-telegram-bot==21.1.1
+requests==2.31.0
+matplotlib==3.8.4
+google-genai==1.2.0
